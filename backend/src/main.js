@@ -55,6 +55,10 @@ class AppServer {
       }
 
       if (process.env.NODE_ENV === 'development') {
+        await database.syncModels(true);
+      }
+
+      if(process.env.NODE_ENV === 'production') {
         await database.syncModels();
       }
 
