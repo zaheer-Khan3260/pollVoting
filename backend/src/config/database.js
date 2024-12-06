@@ -23,12 +23,11 @@ class Database {
     const dbConfig = {
       logging: process.env.NODE_ENV === 'development' ? console.log : false,
 
-      // Connection pool configuration
       pool: {
-        max: 10,        // Maximum number of connections in pool
-        min: 0,         // Minimum number of connections in pool
-        acquire: 30000, // Maximum time to acquire a connection
-        idle: 10000     // Connection idle time before being released
+        max: 10,       
+        min: 0,        
+        acquire: 30000, 
+        idle: 10000     
       },
 
       ...(process.env.NODE_ENV === 'production' && {
@@ -60,7 +59,6 @@ class Database {
     }
   }
 
-  // Sync models (optional - use with caution in production)
   async syncModels(force = false) {
     try {
       await this.sequelize.sync({ force });
