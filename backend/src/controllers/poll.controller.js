@@ -1,11 +1,12 @@
 import  Poll  from '../models/poll.models.js';
 import  PollOption  from '../models/pollOption.models.js';
 import  Vote  from '../models/vote.models.js';
-import sequelize from "../config/database.js";
+import database from "../config/database.js";
 import KafkaProducer from '../services/kafkaProducer.js';
 
+const s = database.sequelize;
 export const createPoll = async (req, res) => {
-  const t = await sequelize.transaction();
+  const t = await s.transaction();
   try {
     const { title, description, options, creator } = req.body;
 
@@ -42,7 +43,7 @@ export const createPoll = async (req, res) => {
 };
 
 export const generateVote = async (req, res) => {
-    const transaction = await sequelize.transaction();
+    const transaction = await s.transaction();
   
     try {
       const { pollId, optionId } = req.body;
