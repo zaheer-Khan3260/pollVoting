@@ -3,7 +3,6 @@ import  PollOption  from '../models/pollOption.models.js';
 import  Vote  from '../models/vote.models.js';
 import sequelize from "../config/database.js";
 import KafkaProducer from '../services/kafkaProducer.js';
-import {WebSocketService } from '../services/websocketService.js';
 
 export const createPoll = async (req, res) => {
   const t = await sequelize.transaction();
