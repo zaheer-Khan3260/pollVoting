@@ -1,21 +1,20 @@
-# Use Node.js LTS image
-FROM node:18
+# Dockerfile for Node.js Backend
+FROM node:18-alpine
 
 # Set working directory
-WORKDIR /usr/src/main
+WORKDIR /app
 
-# Copy package.json and install dependencies
+# Copy package files
 COPY package*.json ./
+
+# Install dependencies
 RUN npm install
 
-# Copy application code
+# Copy the rest of the application code
 COPY . .
 
-# Expose the application's port
+# Expose the application port
 EXPOSE 3000
 
-# Define the environment variables
-ENV NODE_ENV=production
-
-# Start the backend server
-CMD ["npm", "dev"]
+# Command to run the application
+CMD ["npm", "run", "dev"]

@@ -23,9 +23,10 @@ class Database {
     const dbConfig = {
       logging: process.env.NODE_ENV === 'development' ? console.log : false,
 
+      // Connection pool configuration
       pool: {
         max: 10,       
-        min: 0,        
+        min: 0,         
         acquire: 30000, 
         idle: 10000     
       },
@@ -59,10 +60,14 @@ class Database {
     }
   }
 
-  async syncModels(force = false) {
+  // Sync models (optional - use with caution in production)
+  async syncModels(force = false, alter = false) {
     try {
-      await this.sequelize.sync({ force });
-      console.log('All models were synchronized successfully.');
+      await this.sequelize.sync({ 
+        force,  
+        alter  
+      });
+      console.log('Models synchronized successfully.');
     } catch (error) {
       console.error('Error synchronizing models:', error);
     }

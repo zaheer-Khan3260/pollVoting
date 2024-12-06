@@ -5,6 +5,8 @@ import database from './config/database.js';
 import pollRoutes from './routes/poll.routes.js';
 import leaderboardRoutes from './routes/leaderboard.routes.js';
 import { initializeWebSocket } from './config/webSocket.js';
+import { getIoInstance } from './config/webSocket.js';
+import createKafkaConsumer from './services/kafkaConsumer.js';
 
 dotenv.config();
 
@@ -60,9 +62,9 @@ class AppServer {
 
       // Synchronize database models
       if (process.env.NODE_ENV === 'development') {
-        await database.syncModels(true);
-      } else {
-        await database.syncModels();
+        await database.syncModels(false, true);
+      } else if (process.env.NODE_ENV === 'test') {
+        await database.syncModels(true); 
       }
 
       // Start the server
@@ -103,6 +105,35 @@ class AppServer {
   }
 }
 
+async function initializeKafkaConsumer() {
+  try {
+    // Create the Kafka consumer
+    const kafkaConsumer = createKafkaConsumer();
+
+    // Start consuming messages
+    await kafkaConsumer.start();
+
+    // Set up graceful shutdown
+    process.on('SIGINT', async () => {
+      console.log('Received SIGINT. Stopping Kafka consumer...');
+      await kafkaConsumer.stop();
+      process.exit(0);
+    });
+
+    process.on('SIGTERM', async () => {
+      console.log('Received SIGTERM. Stopping Kafka consumer...');
+      await kafkaConsumer.stop();
+      process.exit(0);
+    });
+
+    console.log('Kafka consumer initialized and running');
+  } catch (error) {
+    console.error('Failed to initialize Kafka consumer:', error);
+    process.exit(1);
+  }
+}
+
 const app = new AppServer();
 app.start();
+initializeKafkaConsumer();
 app.setupGracefulShutdown();

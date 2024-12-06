@@ -1,17 +1,16 @@
-import  Poll  from '../models/poll.models.js';
-import  PollOption  from '../models/pollOption.models.js';
-import  Vote  from '../models/vote.models.js';
+import models from "../models/index.js"
 import database from "../config/database.js";
-import KafkaProducer from '../services/kafkaProducer.js';
+import createKafkaProducer from "../services/kafkaProducer.js"
 
-const s = database.sequelize;
+const kafkaProducer = createKafkaProducer();
+const s = database.sequelize
 export const createPoll = async (req, res) => {
   const t = await s.transaction();
   try {
     const { title, description, options, creator } = req.body;
 
     // Create poll
-    const poll = await Poll.create(
+    const poll = await models.Poll.create(
       {
         title,
         description,
@@ -21,7 +20,7 @@ export const createPoll = async (req, res) => {
     );
 
     // Create poll options
-    const pollOptions = await PollOption.bulkCreate(
+    const pollOptions = await models.PollOption.bulkCreate(
       options.map((option) => ({
         pollId: poll.id,
         text: option,
@@ -42,72 +41,71 @@ export const createPoll = async (req, res) => {
   }
 };
 
+
+
 export const generateVote = async (req, res) => {
-    const transaction = await s.transaction();
-  
-    try {
-      const { pollId, optionId } = req.body;
-  
-      if (!pollId || !optionId) {
-        return res.status(400).json({ error: 'Poll ID and Option ID are required' });
-      }
-  
-      const poll = await Poll.findByPk(pollId, {
-        include: [{
-          model: PollOption,
-          as: 'options',
-          where: { id: optionId }
-        }],
-        transaction
-      });
-  
-      if (!poll) {
-        await transaction.rollback();
-        return res.status(404).json({ error: 'Poll or Option not found' });
-      }
-  
-      if (!poll.isActive) {
-        await transaction.rollback();
-        return res.status(400).json({ error: 'Poll is no longer active' });
-      }
-  
-      const selectedOption = poll.options.find(option => option.id === optionId);
-  
-      const messageSentToKafka = await KafkaProducer.sendVote({
-        pollId,
-        optionId,
-        timestamp: new Date().toISOString()
-      });
-  
-      if (!messageSentToKafka) {
-        await transaction.rollback();
-        return res.status(500).json({ error: 'Failed to send vote to Kafka' });
-      }
-  
-      // Immediate acknowledgement to the client
-      res.status(202).json({ message: 'Vote queued for processing' });  
-      await transaction.commit();
-  
-    } catch (error) {
-      await transaction.rollback();
-  
-      console.error('Error processing vote:', error);
-      res.status(500).json({ error: 'Internal server error' });
+  const transaction = await database.sequelize.transaction();
+
+  try {
+    const { pollId, optionId } = req.body;
+
+    if (!pollId || !optionId) {
+      return res.status(400).json({ error: 'Poll ID and Option ID are required' });
     }
-  };
+
+    // Find the poll and validate the option
+    const poll = await models.Poll.findByPk(pollId, {
+      include: [
+        {
+          model: models.PollOption,
+          as: 'options',
+          where: { id: optionId },
+        },
+      ],
+      transaction,
+    });
+
+    if (!poll) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Poll or Option not found' });
+    }
+
+    if (!poll.isActive) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Poll is no longer active' });
+    }
+
+    // Send the vote to Kafka
+    const connectKafka = await kafkaProducer.connect();
+    const messageSentToKafka = await kafkaProducer.sendVote(pollId, optionId);
+
+    if (!messageSentToKafka) {
+      await transaction.rollback();
+      return res.status(500).json({ error: 'Failed to send vote to Kafka' });
+    }
+
+    // Acknowledge the vote to the client
+    res.status(202).json({ message: 'Vote queued for processing' });
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error processing vote:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
 
 export const getPollResults = async (req, res) => {
   try {
     const { pollId } = req.params;
 
-    const poll = await Poll.findByPk(pollId, {
+    const poll = await models.Poll.findByPk(pollId, {
       include: [
         {
-          model: PollOption,
+          model: models.PollOption,
           as: 'options',
           include: [
             {
-              model: Vote,
+              model: models.Vote,
               as: 'votes',
             },
           ],

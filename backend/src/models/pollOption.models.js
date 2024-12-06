@@ -1,7 +1,8 @@
+
 import { DataTypes } from 'sequelize';
 import database from '../config/database.js';
 
-database.connect();
+database.connect()
 const PollOption = database.sequelize.define('PollOption', {
   id: {
     type: DataTypes.UUID,
