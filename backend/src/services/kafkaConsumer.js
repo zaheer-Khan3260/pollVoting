@@ -1,45 +1,33 @@
-import { KafkaClient, Consumer } from 'kafka-node';
 import { Poll } from '../models/poll.models,js';
 import { PollOption } from '../models/pollOption.models.js';
 import { Vote } from '../models/vote.models.js'; 
+import { createKafkaConsumer } from '../config/kafka.js';
 
-const kafkaConsumer = () => {
-  if (!process.env.KAFKA_BOOTSTRAP_SERVERS) {
-    throw new Error('KAFKA_BOOTSTRAP_SERVERS environment variable is not set.');
-  }
+const kafkaConsumer = createKafkaConsumer('poll-votes', 'poll-votes-group');
 
-  const client = new KafkaClient({
-    kafkaHost: process.env.KAFKA_BOOTSTRAP_SERVERS,
-  });
+kafkaConsumer.on('message', async (message) => {
+  try {
+    const { pollId, vote } = JSON.parse(message.value);
 
-  const consumer = new Consumer(client, [
-    { topic: 'poll-votes', partition: 0 },
-  ], {
-    autoCommit: true,
-    groupId: 'poll-votes-group',
-  });
+    const pollOption = await PollOption.findByPk(vote.optionId);
 
-  consumer.on('message', async (message) => {
-    try {
-      const { pollId, vote } = JSON.parse(message.value);
+    if (pollOption) {
+      await pollOption.increment('voteCount');
 
-      const pollOption = await PollOption.findByPk(vote.optionId);
-
-      if (pollOption) {
-        await Vote.create({
-          pollId,
-          optionId: vote.optionId,
-        });
-
-        await updatePollResults(pollId);
-      }
-
-    } catch (error) {
-      console.error('Error processing Kafka message:', error);
+      await Vote.create({
+        pollId,
+        optionId: vote.optionId,
+      });
     }
-  });
+    await updatePollResults(pollId);
+    
+  } catch (error) {
+    console.error('Error processing Kafka message:', error);
+  }
+});
 
-  consumer.on('error', (error) => {
+
+kafkaConsumer.on('error', (error) => {
     console.error('Kafka Consumer Error:', error);
   });
 
@@ -74,9 +62,5 @@ const kafkaConsumer = () => {
     }
   };
 
-  return {
-    consumer,
-  };
-};
 
 export default kafkaConsumer;
