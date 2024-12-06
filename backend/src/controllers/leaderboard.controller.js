@@ -3,7 +3,7 @@ import PollOption from "../models/pollOption.models.js";
 import  sequelize  from "../config/database.js"
 
 // Get global leaderboard
-export const getLeaderboard = async (req, res) => {
+export const getLeaderboard = async (_, res) => {
   try {
     // Get top 10 poll options across all polls
     const topOptions = await PollOption.findAll({
