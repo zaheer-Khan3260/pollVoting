@@ -19,8 +19,8 @@ This is a high-concurrency polling system built with Node.js, Kafka, Zookeeper, 
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/polling-system-backend.git
-cd polling-system-backend
+git clone https://github.com/zaheer-Khan3260/pollVoting.git
+cd backend
 ```
 
 ### 2. Environment Configuration
